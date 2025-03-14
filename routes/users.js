@@ -16,6 +16,7 @@ router.post('/createuser', async (req, res) => {
 })
 
 router.get('/getusers', async (req, res) => {
+
     try {
         const snapshot = await usersCollection.get()
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -37,6 +38,22 @@ router.get('/getuser/:id', async (req, res) => {
         res.json({ id: userDoc.id, ...userDoc.data() })
     } catch (error) {
         res.status(500).json({ error: 'Erro ao buscar usuário' })
+    }
+})
+
+router.delete('/deleteuser/:id', async (req, res) => {
+    try {
+        const userId = req.params.id
+        const userDoc = await usersCollection.doc(userId).get()
+
+        if (!userDoc.exists) {
+            return res.status(404).json({ error: 'Usuário não encontrado' })
+        }
+
+        await usersCollection.doc(userId).delete()
+        res.json({ message: 'Usuário deletado com sucesso' })
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao deletar usuário' })
     }
 })
 
