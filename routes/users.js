@@ -79,4 +79,20 @@ router.get('/getuserbycargo/:cargo', async (req, res) => {
     }
 });
 
+router.get('/getuserbyname/:name', async (req, res) => {
+    try {
+        const name = req.params.name.toLowerCase();
+        const snapshot = await usersCollection.where('name', '==', name).get();
+
+        if (snapshot.empty) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar usuários' });
+    }
+});
+
 export default router
