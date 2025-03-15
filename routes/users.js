@@ -7,8 +7,14 @@ const usersCollection = db.collection('users')
 router.post('/createuser', async (req, res) => {
     const { name, email, cargo } = req.body
 
+    const newUser = {
+        name: name.toLowerCase(), 
+        email: email.toLowerCase(), 
+        cargo: cargo.toLowerCase()
+    }
+
     try {
-        const docRef = await usersCollection.add({ name, email, cargo })
+        const docRef = await usersCollection.add(newUser)
         res.status(201).json({ id: docRef.id, name, email, cargo })
     } catch (error) {
         res.status(500).json({ error: 'Erro ao salvar usuário' })
@@ -56,5 +62,21 @@ router.delete('/deleteuser/:id', async (req, res) => {
         res.status(500).json({ error: 'Erro ao deletar usuário' })
     }
 })
+
+router.get('/getuserbycargo/:cargo', async (req, res) => {
+    try {
+        const cargo = req.params.cargo.toLowerCase();
+        const snapshot = await usersCollection.where('cargo', '==', cargo).get();
+
+        if (snapshot.empty) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: 'Erro ao buscar usuários' });
+    }
+});
 
 export default router
