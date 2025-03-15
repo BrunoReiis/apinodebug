@@ -3,6 +3,7 @@ import db from "../firebase.js";
 
 const router = express.Router();
 const bugsCollection = db.collection("bugs");
+const usersCollection = db.collection("users");
 
 router.post("/createcomment", async (req, res) => {
   const { comment, userid, bugid } = req.body;
@@ -11,9 +12,14 @@ router.post("/createcomment", async (req, res) => {
     return res.status(400).json({ error: "Dados incompletos" });
   }
 
-  try {
-    console.log("Recebendo comentário:", req.body);
+  const userDoc = await usersCollection.doc(userid).get();
+  const userData = userDoc.data();
 
+  if (!userData) {
+    return res.status(400).json({ error: "Usuario não encontrado" });
+  }
+
+  try {
     const bugDoc = await bugsCollection.doc(bugid).get();
 
     if (!bugDoc.exists) {
@@ -29,8 +35,6 @@ router.post("/createcomment", async (req, res) => {
     };
 
     await commentRef.set(commentData);
-
-    console.log("Comentário salvo com sucesso:", commentData);
     res.status(201).json({
       message: "Comentário salvo com sucesso",
       commentId: commentRef.id,
