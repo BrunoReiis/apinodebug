@@ -5,11 +5,11 @@ const router = express.Router()
 const usersCollection = db.collection('users')
 
 router.post('/createuser', async (req, res) => {
-    const { name, email } = req.body
+    const { name, email, cargo } = req.body
 
     try {
-        const docRef = await usersCollection.add({ name, email })
-        res.status(201).json({ id: docRef.id, name, email })
+        const docRef = await usersCollection.add({ name, email, cargo })
+        res.status(201).json({ id: docRef.id, name, email, cargo })
     } catch (error) {
         res.status(500).json({ error: 'Erro ao salvar usuário' })
     }
