@@ -19,12 +19,12 @@ router.post("/createbugreport", async (req, res) => {
     const userName = userData.name;
 
     const bugReport = {
-      titulo,
+      titulo: titulo.toLowerCase(),
       descricao,
-      prioridade,
+      prioridade: prioridade.toLowerCase(),
       idresponsavel: responsavel,
-      nomeresponsavel: userName,
-      status,
+      nomeresponsavel: userName.toLowerCase(),
+      status: status.toLowerCase(),
       criadoEm: new Date(),
     };
 
@@ -74,6 +74,38 @@ router.delete("/deletebug/:id", async (req, res) => {
     res.json({ message: "Bug deletado com sucesso" });
   } catch (error) {
     res.status(500).json({ error: "Erro ao deletar Bug" });
+  }
+});
+
+router.get('/getbugbypriority/:priority', async (req, res) => {
+  try {
+      const priority = req.params.priority.toLowerCase();
+      const snapshot = await bugsCollection.where('prioridade', '==', priority).get();
+
+      if (snapshot.empty) {
+          return res.status(404).json({ error: 'Bug não encontrado' });
+      }
+
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      res.json(users);
+  } catch (error) {
+      res.status(500).json({ error: 'Erro ao buscar bugs' });
+  }
+});
+
+router.get('/getbugbystatus/:status', async (req, res) => {
+  try {
+      const status = req.params.status.toLowerCase();
+      const snapshot = await bugsCollection.where('status', '==', status).get();
+
+      if (snapshot.empty) {
+          return res.status(404).json({ error: 'Bug não encontrado' });
+      }
+
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      res.json(users);
+  } catch (error) {
+      res.status(500).json({ error: 'Erro ao buscar bugs' });
   }
 });
 
