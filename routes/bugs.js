@@ -109,4 +109,20 @@ router.get('/getbugbystatus/:status', async (req, res) => {
   }
 });
 
+router.get('/getbugbytitle/:title', async (req, res) => {
+  try {
+      const title = req.params.title.toLowerCase();
+      const snapshot = await bugsCollection.where('titulo', '==', title).get();
+
+      if (snapshot.empty) {
+          return res.status(404).json({ error: 'Bug não encontrado' });
+      }
+
+      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      res.json(users);
+  } catch (error) {
+      res.status(500).json({ error: 'Erro ao buscar bugs' });
+  }
+});
+
 export default router;
