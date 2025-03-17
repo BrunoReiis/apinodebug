@@ -2,6 +2,7 @@ import express from 'express'
 import routes from './routes.js'
 
 const app = express()
+const port = 3000
 
 app.use(express.json())
 
@@ -9,4 +10,4 @@ Object.entries(routes).forEach(([path, router]) => {
     app.use(path, router);
 });
 
-app.listen(3000, () => console.log('Servidor rodando na porta 3000'))
+app.listen(port, () => console.log(`Api on port ${port}`));

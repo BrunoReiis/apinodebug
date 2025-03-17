@@ -5,19 +5,19 @@ const router = express.Router()
 const usersCollection = db.collection('users')
 
 router.post('/createuser', async (req, res) => {
-    const { name, email, cargo } = req.body
+    const { name, email, role } = req.body
 
     const newUser = {
         name: name.toLowerCase(), 
         email: email.toLowerCase(), 
-        cargo: cargo.toLowerCase()
+        role: role.toLowerCase()
     }
 
     try {
         const docRef = await usersCollection.add(newUser)
-        res.status(201).json({ id: docRef.id, name, email, cargo })
+        res.status(201).json({ id: docRef.id, name, email, role })
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao salvar usuário' })
+        res.status(500).json({ error: 'Error saving a user' })
     }
 })
 
@@ -28,7 +28,7 @@ router.get('/getusers', async (req, res) => {
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         res.json(users)
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar usuários' })
+        res.status(500).json({ error: 'Error searching users' })
     }
 })
 
@@ -38,12 +38,12 @@ router.get('/getuser/:id', async (req, res) => {
         const userDoc = await usersCollection.doc(userId).get()
 
         if (!userDoc.exists) {
-            return res.status(404).json({ error: 'Usuário não encontrado' })
+            return res.status(404).json({ error: 'User not found' })
         }
 
         res.json({ id: userDoc.id, ...userDoc.data() })
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar usuário' })
+        res.status(500).json({ error: 'Error searching a user' })
     }
 })
 
@@ -53,29 +53,29 @@ router.delete('/deleteuser/:id', async (req, res) => {
         const userDoc = await usersCollection.doc(userId).get()
 
         if (!userDoc.exists) {
-            return res.status(404).json({ error: 'Usuário não encontrado' })
+            return res.status(404).json({ error: 'User not found' })
         }
 
         await usersCollection.doc(userId).delete()
-        res.json({ message: 'Usuário deletado com sucesso' })
+        res.json({ message: 'User deleted' })
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao deletar usuário' })
+        res.status(500).json({ error: 'Error deleting a user' })
     }
 })
 
-router.get('/getuserbycargo/:cargo', async (req, res) => {
+router.get('/getuserbyrole/:role', async (req, res) => {
     try {
-        const cargo = req.params.cargo.toLowerCase();
-        const snapshot = await usersCollection.where('cargo', '==', cargo).get();
+        const role = req.params.role.toLowerCase();
+        const snapshot = await usersCollection.where('role', '==', role).get();
 
         if (snapshot.empty) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.json(users);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar usuários' });
+        res.status(500).json({ error: 'Error searching users' });
     }
 });
 
@@ -85,13 +85,13 @@ router.get('/getuserbyname/:name', async (req, res) => {
         const snapshot = await usersCollection.where('name', '==', name).get();
 
         if (snapshot.empty) {
-            return res.status(404).json({ error: 'Usuário não encontrado' });
+            return res.status(404).json({ error: 'User not found' });
         }
 
         const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.json(users);
     } catch (error) {
-        res.status(500).json({ error: 'Erro ao buscar usuários' });
+        res.status(500).json({ error: 'Error searching a user' });
     }
 });
 

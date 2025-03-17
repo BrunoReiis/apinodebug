@@ -9,21 +9,21 @@ router.post("/createcomment", async (req, res) => {
   const { comment, userid, bugid } = req.body;
 
   if (!comment || !userid || !bugid) {
-    return res.status(400).json({ error: "Dados incompletos" });
+    return res.status(400).json({ error: "incomplete data" });
   }
 
   const userDoc = await usersCollection.doc(userid).get();
   const userData = userDoc.data();
 
   if (!userData) {
-    return res.status(400).json({ error: "Usuario não encontrado" });
+    return res.status(400).json({ error: "User not found" });
   }
 
   try {
     const bugDoc = await bugsCollection.doc(bugid).get();
 
     if (!bugDoc.exists) {
-      return res.status(404).json({ error: "Bug não encontrado" });
+      return res.status(404).json({ error: "Bug not found" });
     }
 
     const commentRef = bugsCollection.doc(bugid).collection("comments").doc();
@@ -36,12 +36,11 @@ router.post("/createcomment", async (req, res) => {
 
     await commentRef.set(commentData);
     res.status(201).json({
-      message: "Comentário salvo com sucesso",
+      message: "Comment saved",
       commentId: commentRef.id,
     });
   } catch (error) {
-    console.error("Erro ao salvar comentário:", error);
-    res.status(500).json({ error: "Erro ao salvar comentário" });
+    res.status(500).json({ error: "Error saving a comment" });
   }
 });
 
@@ -59,7 +58,7 @@ router.get("/getcomments/:bugid", async (req, res) => {
     }));
     res.json(comments);
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar comentários" });
+    res.status(500).json({ error: "Error searching comments" });
   }
 });
 
@@ -74,12 +73,12 @@ router.get("/getcomment/:bugid/:commentid", async (req, res) => {
       .get();
 
     if (!commentDoc.exists) {
-      return res.status(404).json({ error: "Comentário não encontrado" });
+      return res.status(404).json({ error: "Comment not found" });
     }
 
     res.json({ id: commentDoc.id, ...commentDoc.data() });
   } catch (error) {
-    res.status(500).json({ error: "Erro ao buscar comentário" });
+    res.status(500).json({ error: "Error searching a comment" });
   }
 });
 
@@ -94,13 +93,13 @@ router.delete("/deletecomment/:bugid/:commentid", async (req, res) => {
     const commentDoc = await commentRef.get();
 
     if (!commentDoc.exists) {
-      return res.status(404).json({ error: "Comentário não encontrado" });
+      return res.status(404).json({ error: "Comment not found" });
     }
 
     await commentRef.delete();
-    res.json({ message: "Comentário deletado com sucesso" });
+    res.json({ message: "Comment deleted" });
   } catch (error) {
-    res.status(500).json({ error: "Erro ao deletar comentário" });
+    res.status(500).json({ error: "Error deleting comment" });
   }
 });
 
