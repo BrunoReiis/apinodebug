@@ -8,6 +8,16 @@ const bugsCollection = db.collection("bugs");
 router.post("/createbugreport", async (req, res) => {
   const { title, description, priority, user, status } = req.body;
 
+  if (
+    !title ||
+    !description ||
+    !priority ||
+    !user ||
+    !status
+  ) {
+    return res.status(400).json({ error: "Incomplete data" });
+  }
+
   try {
     const userDoc = await usersCollection.doc(user).get();
     const userData = userDoc.data();
@@ -40,8 +50,14 @@ router.get("/getbugs", async (req, res) => {
   try {
     const snapshot = await bugsCollection.get();
     const bugs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+    if (!bugs) {
+      return res.status(404).json({ error: "Bug not found" });
+    }
+
     res.json(bugs);
   } catch (error) {
+    console.log(error)
     res.status(500).json({ error: "Error searching for bugs" });
   }
 });

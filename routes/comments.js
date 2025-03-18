@@ -56,6 +56,7 @@ router.get("/getcomments/:bugid", async (req, res) => {
       id: doc.id,
       ...doc.data(),
     }));
+    
     res.json(comments);
   } catch (error) {
     res.status(500).json({ error: "Error searching comments" });
