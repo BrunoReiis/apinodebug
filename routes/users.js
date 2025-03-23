@@ -1,27 +1,65 @@
 import express from "express";
-import db from "../firebase.js";
+import {db, auth} from "../firebase.js";
 
 const router = express.Router();
 const usersCollection = db.collection("users");
 
 router.post("/createuser", async (req, res) => {
-  const { name, email, role } = req.body;
+  const { name, email, password, role } = req.body;
 
-  if (!name || !email || !role) {
+  if (!name || !email || !password || !role) {
     return res.status(400).json({ error: "Incomplete data" });
   }
 
-  const newUser = {
-    name: name.toLowerCase(),
-    email: email.toLowerCase(),
-    role: role.toLowerCase(),
-  };
+  try {
+    const userRecord = await auth.createUser({
+      email,
+      password,
+      displayName: name,
+    });
+
+    const newUser = {
+      uid: userRecord.uid,
+      name: name.toLowerCase(),
+      email: email.toLowerCase(),
+      role: role.toLowerCase(),
+    };
+
+    await usersCollection.doc(userRecord.uid).set(newUser);
+
+    res.status(201).json({ id: userRecord.uid, name, email, role });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post("/login", async (req, res) => {
+  const { token } = req.body; 
+
+  if (!token) {
+    return res.status(400).json({ error: "Token is required" });
+  }
 
   try {
-    const docRef = await usersCollection.add(newUser);
-    res.status(201).json({ id: docRef.id, name, email, role });
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const { uid, email } = decodedToken;
+    
+    const userDoc = await db.collection("users").doc(uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const userData = userDoc.data();
+
+    res.status(200).json({
+      uid,
+      email,
+      name: userData.name,
+      role: userData.role,
+    });
   } catch (error) {
-    res.status(500).json({ error: "Error saving a user" });
+    res.status(401).json({ error: "Invalid token" });
   }
 });
 
