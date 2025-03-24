@@ -34,18 +34,17 @@ router.post("/createuser", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { token } = req.body; 
+  const { token } = req.body;
 
   if (!token) {
     return res.status(400).json({ error: "Token is required" });
   }
 
   try {
-    const decodedToken = await admin.auth().verifyIdToken(token);
+    const decodedToken = await auth.verifyIdToken(token);
     const { uid, email } = decodedToken;
-    
-    const userDoc = await db.collection("users").doc(uid).get();
 
+    const userDoc = await db.collection("users").doc(uid).get();
     if (!userDoc.exists) {
       return res.status(404).json({ error: "User not found" });
     }
