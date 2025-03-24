@@ -2,142 +2,131 @@ import express from "express";
 import { db } from "../firebase.js";
 
 const router = express.Router();
-const usersCollection = db.collection("users");
-const bugsCollection = db.collection("bugs");
+const projectsCollection = db.collection("projects");
 
-router.post("/createbugreport", async (req, res) => {
+router.post("/projects/:projectId/createbugreport", async (req, res) => {
   const { title, description, priority, user, status } = req.body;
+  const { projectId } = req.params;
 
-  if (
-    !title ||
-    !description ||
-    !priority ||
-    !user ||
-    !status
-  ) {
+  if (!title || !description || !priority || !user || !status) {
     return res.status(400).json({ error: "Incomplete data" });
   }
 
   try {
-    const userDoc = await usersCollection.doc(user).get();
-    const userData = userDoc.data();
-
-    if (!userData) {
-      return res.status(400).json({ error: "User not found" });
+    const projectDoc = await projectsCollection.doc(projectId).get();
+    if (!projectDoc.exists) {
+      return res.status(404).json({ error: "Project not found" });
     }
 
-    const userName = userData.name;
-
-    const bugReport = {
+    const bugData = {
       title: title.toLowerCase(),
       description,
       priority: priority.toLowerCase(),
       iduser: user,
-      nameUser: userName.toLowerCase(),
       status: status.toLowerCase(),
       created: new Date(),
     };
 
-    const bugDocRef = await bugsCollection.add(bugReport);
-    res.status(201).json({ id: bugDocRef.id, ...bugReport });
+    const bugRef = await projectsCollection
+      .doc(projectId)
+      .collection("bugs")
+      .add(bugData);
+    res.status(201).json({ id: bugRef.id, ...bugData });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ error: "Error saving a bug" });
+    res.status(500).json({ error: "Error creating bug" });
   }
 });
 
-router.get("/getbugs", async (req, res) => {
+router.put("/projects/:projectId/bugs/:bugId", async (req, res) => {
+  const { title, description, priority, status } = req.body;
+  const { projectId, bugId } = req.params;
+
   try {
-    const snapshot = await bugsCollection.get();
-    const bugs = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-
-    if (!bugs) {
-      return res.status(404).json({ error: "Bug not found" });
-    }
-
-    res.json(bugs);
-  } catch (error) {
-    console.log(error)
-    res.status(500).json({ error: "Error searching for bugs" });
-  }
-});
-
-router.get("/getbug/:id", async (req, res) => {
-  try {
-    const bugId = req.params.id;
-    const bugDoc = await bugsCollection.doc(bugId).get();
+    const bugRef = projectsCollection.doc(projectId).collection("bugs").doc(bugId);
+    const bugDoc = await bugRef.get();
 
     if (!bugDoc.exists) {
       return res.status(404).json({ error: "Bug not found" });
     }
 
-    res.json({ id: bugDoc.id, ...bugDoc.data() });
+    await bugRef.update({ title, description, priority, status });
+    res.status(200).json({ message: "Bug updated successfully" });
   } catch (error) {
-    res.status(500).json({ error: "Error when searching for a bug" });
+    console.error("Error updating bug:", error);
+    res.status(500).json({ error: "Error updating bug" });
   }
 });
 
-router.delete("/deletebug/:id", async (req, res) => {
+router.delete("/projects/:projectId/bugs/:bugId", async (req, res) => {
+  const { projectId, bugId } = req.params;
+
   try {
-    const bugId = req.params.id;
-    const bugDoc = await bugsCollection.doc(bugId).get();
+    const bugRef = projectsCollection.doc(projectId).collection("bugs").doc(bugId);
+    const bugDoc = await bugRef.get();
 
     if (!bugDoc.exists) {
       return res.status(404).json({ error: "Bug not found" });
     }
 
-    await bugsCollection.doc(bugId).delete();
-    res.json({ message: "Bug deleted" });
+    await bugRef.delete();
+    res.status(200).json({ message: "Bug deleted successfully" });
   } catch (error) {
-    res.status(500).json({ error: "Error deleting a bug" });
+    console.error("Error deleting bug:", error);
+    res.status(500).json({ error: "Error deleting bug" });
   }
 });
 
-router.get('/getbugbypriority/:priority', async (req, res) => {
+router.get("/projects/:projectId/bugs", async (req, res) => {
+  const { projectId } = req.params;
+
   try {
-      const priority = req.params.priority.toLowerCase();
-      const snapshot = await bugsCollection.where('priority', '==', priority).get();
-
-      if (snapshot.empty) {
-          return res.status(404).json({ error: 'Bug not found' });
-      }
-
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      res.json(users);
+    const bugsSnapshot = await projectsCollection.doc(projectId).collection("bugs").get();
+    const bugs = bugsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(bugs);
   } catch (error) {
-      res.status(500).json({ error: 'Error searching for a bug (priority)' });
+    console.error("Error fetching bugs:", error);
+    res.status(500).json({ error: "Error fetching bugs" });
   }
 });
 
-router.get('/getbugbystatus/:status', async (req, res) => {
+router.get("/projects/:projectId/bugs/priority/:priority", async (req, res) => {
+  const { projectId, priority } = req.params;
+
   try {
-      const status = req.params.status.toLowerCase();
-      const snapshot = await bugsCollection.where('status', '==', status).get();
-
-      if (snapshot.empty) {
-          return res.status(404).json({ error: 'Bug not found' });
-      }
-
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      res.json(users);
+    const bugsSnapshot = await projectsCollection.doc(projectId).collection("bugs").where("priority", "==", priority.toLowerCase()).get();
+    const bugs = bugsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(bugs);
   } catch (error) {
-      res.status(500).json({ error: 'Error searching for a bug (status)' });
+    console.error("Error fetching bugs by priority:", error);
+    res.status(500).json({ error: "Error fetching bugs" });
   }
 });
 
-router.get('/getbugbytitle/:title', async (req, res) => {
+router.get("/projects/:projectId/bugs/status/:status", async (req, res) => {
+  const { projectId, status } = req.params;
+
   try {
-      const title = req.params.title.toLowerCase();
-      const snapshot = await bugsCollection.where('title', '==', title).get();
-
-      if (snapshot.empty) {
-          return res.status(404).json({ error: 'Bug not found' });
-      }
-
-      const users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      res.json(users);
+    const bugsSnapshot = await projectsCollection.doc(projectId).collection("bugs").where("status", "==", status.toLowerCase()).get();
+    const bugs = bugsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(bugs);
   } catch (error) {
-      res.status(500).json({ error: 'Error searching for a bug (title)' });
+    console.error("Error fetching bugs by status:", error);
+    res.status(500).json({ error: "Error fetching bugs" });
+  }
+});
+
+
+router.get("/projects/:projectId/bugs/title/:title", async (req, res) => {
+  const { projectId, title } = req.params;
+
+  try {
+    const bugsSnapshot = await projectsCollection.doc(projectId).collection("bugs").where("title", "==", title.toLowerCase()).get();
+    const bugs = bugsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.status(200).json(bugs);
+  } catch (error) {
+    console.error("Error fetching bugs by title:", error);
+    res.status(500).json({ error: "Error fetching bugs" });
   }
 });
 

@@ -2,95 +2,72 @@ import express from "express";
 import { db } from "../firebase.js";
 
 const router = express.Router();
-const bugsCollection = db.collection("bugs");
-const usersCollection = db.collection("users");
+const projectsCollection = db.collection("projects");
 
-router.post("/createcomment", async (req, res) => {
-  const { comment, userid, bugid } = req.body;
+router.post("/projects/:projectId/bugs/:bugId/createcomment", async (req, res) => {
+  const { comment, userid } = req.body;
+  const { projectId, bugId } = req.params;
 
-  if (!comment || !userid || !bugid) {
-    return res.status(400).json({ error: "incomplete data" });
-  }
-
-  const userDoc = await usersCollection.doc(userid).get();
-  const userData = userDoc.data();
-
-  if (!userData) {
-    return res.status(400).json({ error: "User not found" });
+  if (!comment || !userid) {
+    return res.status(400).json({ error: "Incomplete data" });
   }
 
   try {
-    const bugDoc = await bugsCollection.doc(bugid).get();
-
-    if (!bugDoc.exists) {
-      return res.status(404).json({ error: "Bug not found" });
-    }
-
-    const commentRef = bugsCollection.doc(bugid).collection("comments").doc();
     const commentData = {
-      id: commentRef.id,
       userid,
       comment,
       timestamp: new Date(),
     };
 
-    await commentRef.set(commentData);
-    res.status(201).json({
-      message: "Comment saved",
-      commentId: commentRef.id,
-    });
+    const commentRef = await projectsCollection
+      .doc(projectId)
+      .collection("bugs")
+      .doc(bugId)
+      .collection("comments")
+      .add(commentData);
+
+    res.status(201).json({ id: commentRef.id, ...commentData });
   } catch (error) {
-    res.status(500).json({ error: "Error saving a comment" });
+    console.log(error);
+    res.status(500).json({ error: "Error adding comment" });
   }
 });
 
-router.get("/getcomments/:bugid", async (req, res) => {
-  const { bugid } = req.params;
+router.get("/projects/:projectId/bugs/:bugId/comments", async (req, res) => {
+  const { projectId, bugId } = req.params;
 
   try {
-    const commentsSnapshot = await bugsCollection
-      .doc(bugid)
+    const commentsSnapshot = await projectsCollection
+      .doc(projectId)
+      .collection("bugs")
+      .doc(bugId)
       .collection("comments")
+      .orderBy("timestamp", "asc")
       .get();
+
     const comments = commentsSnapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
-    
-    res.json(comments);
+
+    res.status(200).json(comments);
   } catch (error) {
-    res.status(500).json({ error: "Error searching comments" });
+    console.log(error);
+    res.status(500).json({ error: "Error fetching comments" });
   }
 });
 
-router.get("/getcomment/:bugid/:commentid", async (req, res) => {
-  const { bugid, commentid } = req.params;
+router.delete("/projects/:projectId/bugs/:bugId/comments/:commentId", async (req, res) => {
+  const { projectId, bugId, commentId } = req.params;
 
   try {
-    const commentDoc = await bugsCollection
-      .doc(bugid)
+    const commentRef = projectsCollection
+      .doc(projectId)
+      .collection("bugs")
+      .doc(bugId)
       .collection("comments")
-      .doc(commentid)
-      .get();
+      .doc(commentId);
 
-    if (!commentDoc.exists) {
-      return res.status(404).json({ error: "Comment not found" });
-    }
-
-    res.json({ id: commentDoc.id, ...commentDoc.data() });
-  } catch (error) {
-    res.status(500).json({ error: "Error searching a comment" });
-  }
-});
-
-router.delete("/deletecomment/:bugid/:commentid", async (req, res) => {
-  const { bugid, commentid } = req.params;
-
-  try {
-    const commentRef = bugsCollection
-      .doc(bugid)
-      .collection("comments")
-      .doc(commentid);
     const commentDoc = await commentRef.get();
 
     if (!commentDoc.exists) {
@@ -98,8 +75,9 @@ router.delete("/deletecomment/:bugid/:commentid", async (req, res) => {
     }
 
     await commentRef.delete();
-    res.json({ message: "Comment deleted" });
+    res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {
+    console.log(error);
     res.status(500).json({ error: "Error deleting comment" });
   }
 });
