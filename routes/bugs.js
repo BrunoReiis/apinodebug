@@ -90,6 +90,27 @@ router.get("/projects/:projectId/bugs", async (req, res) => {
   }
 });
 
+router.get("/projects/getallbugs", async (req, res) => {
+  try {
+    const projectsSnapshot = await projectsCollection.get();
+    let allBugs = [];
+
+    for (const projectDoc of projectsSnapshot.docs) {
+      const bugsSnapshot = await projectDoc.ref.collection("bugs").get();
+      const bugs = bugsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        projectId: projectDoc.id,
+        ...doc.data(),
+      }));
+      allBugs = [...allBugs, ...bugs];
+    }
+
+    res.json(allBugs);
+  } catch (error) {
+    res.status(500).json({ error: "Error fetching all bugs" });
+  }
+});
+
 router.get("/projects/:projectId/bugs/priority/:priority", async (req, res) => {
   const { projectId, priority } = req.params;
 

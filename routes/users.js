@@ -3,11 +3,12 @@ import {db, auth} from "../firebase.js";
 
 const router = express.Router();
 const usersCollection = db.collection("users");
+const teamsCollection = db.collection("teams");
 
 router.post("/createuser", async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password } = req.body;
 
-  if (!name || !email || !password || !role) {
+  if (!name || !email || !password) {
     return res.status(400).json({ error: "Incomplete data" });
   }
 
@@ -22,12 +23,11 @@ router.post("/createuser", async (req, res) => {
       uid: userRecord.uid,
       name: name.toLowerCase(),
       email: email.toLowerCase(),
-      role: role.toLowerCase(),
     };
 
     await usersCollection.doc(userRecord.uid).set(newUser);
 
-    res.status(201).json({ id: userRecord.uid, name, email, role });
+    res.status(201).json({ id: userRecord.uid, name, email });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -65,7 +65,21 @@ router.post("/login", async (req, res) => {
 router.get("/getusers", async (req, res) => {
   try {
     const snapshot = await usersCollection.get();
-    const users = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const users = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const userData = doc.data();
+        let teamInfo = null;
+        
+        if (userData.teamId) {
+          const teamDoc = await teamsCollection.doc(userData.teamId).get();
+          if (teamDoc.exists) {
+            teamInfo = { id: teamDoc.id, name: teamDoc.data().name };
+          }
+        }
+
+        return { id: doc.id, ...userData, team: teamInfo };
+      })
+    );
     res.json(users);
   } catch (error) {
     res.status(500).json({ error: "Error searching users" });
@@ -81,11 +95,22 @@ router.get("/getuser/:id", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    res.json({ id: userDoc.id, ...userDoc.data() });
+    const userData = userDoc.data();
+    let teamInfo = null;
+
+    if (userData.teamId) {
+      const teamDoc = await teamsCollection.doc(userData.teamId).get();
+      if (teamDoc.exists) {
+        teamInfo = { id: teamDoc.id, name: teamDoc.data().name };
+      }
+    }
+
+    res.json({ id: userDoc.id, ...userData, team: teamInfo });
   } catch (error) {
     res.status(500).json({ error: "Error searching a user" });
   }
 });
+
 
 router.delete("/deleteuser/:id", async (req, res) => {
   try {
